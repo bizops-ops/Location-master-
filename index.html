@@ -62,6 +62,8 @@
   .header-sub{font-size:12px;color:var(--ink-muted);margin:1px 0 0;}
   .signout-btn{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-muted);padding:8px 10px;border-radius:8px;transition:background .15s;}
   .signout-btn:hover{background:var(--bg);}
+  .link-btn{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--primary-dark);padding:8px 10px;border-radius:8px;transition:background .15s;text-decoration:none;}
+  .link-btn:hover{background:var(--primary-soft);}
 
   /* dispatch route divider — signature animation: a rider delivering across the route */
   .route-strip{height:34px;position:relative;overflow:hidden;}
@@ -198,6 +200,7 @@ const ICONS = {
   alert:(s=15)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
   loader:(s=18)=>`<svg class="icon spin" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>`,
   chevron:(s=14)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+  externalLink:(s=14)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
   upload:(s=15)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
   download:(s=15)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
   bike:(s=36)=>`<svg width="${s}" height="${s*0.62}" viewBox="0 0 48 32" xmlns="http://www.w3.org/2000/svg">
@@ -603,6 +606,11 @@ function renderDashboard(){
       </div>
       <button class="signout-btn" data-action="signout">${ICONS.logout(15)} Sign out</button>
     </div>
+    <div style="max-width:1080px;margin:0 auto;padding:0 24px 12px;">
+      <a class="link-btn" href="./add-store.html" target="_blank" rel="noopener" style="display:inline-flex;">
+        ${ICONS.externalLink(14)} Open store submission form (for the store team)
+      </a>
+    </div>
     <div class="route-strip"><div class="route-track"><div class="route-bike">${ICONS.bike(38)}</div></div></div>
   </div>
 
@@ -699,13 +707,14 @@ function handleImportFile(file){
         const brandCode = findVal(row, ["Brand","Brand code","BrandCode"]);
         const address = findVal(row, ["Address","Full address"]);
         const location = findVal(row, ["Location","Area","Locality"]);
+        const mapsLink = findVal(row, ["Maps link","Maps Link","Map link","Google Maps link","Location link","Link"]);
         const pocName = findVal(row, ["POC name","POC Name","POCName","Contact name"]);
         const pocPhone = findVal(row, ["POC number","POC Number","POCNumber","Phone","POC phone","Contact number"]);
         const storeName = storeNameRaw || `ZD ${brandCode} ${location}`.replace(/\s+/g," ").trim();
         return {
           id: genId(),
           brandCode, location, city: location, storeName,
-          address, mapsLink: "", pocName, pocPhone,
+          address, mapsLink, pocName, pocPhone,
         };
       }).filter(r=> r.location || r.address || r.storeName);
 
@@ -728,11 +737,12 @@ function exportToExcel(){
     "Brand": s.brandCode || "",
     "Address": s.address || "",
     "Location": s.city || s.location || "",
+    "Maps link": s.mapsLink || "",
     "POC name": s.pocName || "",
     "POC number": s.pocPhone || "",
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws["!cols"] = [{wch:26},{wch:10},{wch:46},{wch:18},{wch:18},{wch:16}];
+  ws["!cols"] = [{wch:26},{wch:10},{wch:46},{wch:18},{wch:40},{wch:18},{wch:16}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Store Master");
   XLSX.writeFile(wb, "zippee-location-master.xlsx");

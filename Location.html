@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Zippee · Location Master</title>
+<style>
+  :root{
+    --bg:#F7F9F8;
+    --surface:#FFFFFF;
+    --border:#E4E9E7;
+    --ink:#101816;
+    --ink-muted:#5C6A66;
+    --primary:#0E7C6B;
+    --primary-dark:#095E51;
+    --primary-soft:#E4F3EF;
+    --amber:#D97B0D;
+    --amber-soft:#FBEBD8;
+    --danger:#C43D3D;
+    --danger-soft:#FBE9E9;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;}
+  input,select,textarea{font-family:inherit;}
+  .icon{display:inline-flex;vertical-align:middle;}
+  .icon svg{display:block;}
+
+  /* ---------- Login screen ---------- */
+  .login-wrap{min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden;}
+  .login-wrap::before{
+    content:"";position:absolute;inset:0;
+    background-image:
+      radial-gradient(circle at 15% 20%, var(--primary-soft) 0%, transparent 35%),
+      radial-gradient(circle at 85% 75%, var(--amber-soft) 0%, transparent 40%);
+    opacity:.9;
+  }
+  .float-pin{position:absolute;opacity:.16;animation:float 7s ease-in-out infinite;}
+  @keyframes float{0%,100%{transform:translateY(0) rotate(-4deg);}50%{transform:translateY(-16px) rotate(4deg);}}
+  .login-card-wrap{position:relative;z-index:1;width:100%;max-width:380px;}
+  .brand-mark{display:flex;flex-direction:column;align-items:center;margin-bottom:28px;}
+  .pin-badge{width:64px;height:64px;border-radius:20px;background:#111111;display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:14px;box-shadow:0 8px 24px rgba(0,0,0,.22);}
+  .pin-ring{position:absolute;inset:-8px;border-radius:26px;border:2px solid var(--primary);opacity:0;animation:ping 2.4s cubic-bezier(0,0,.2,1) infinite;}
+  .pin-ring.d2{animation-delay:.8s;}
+  @keyframes ping{0%{transform:scale(1);opacity:.55;}80%{transform:scale(1.5);opacity:0;}100%{opacity:0;}}
+  .brand-mark h1{font-size:21px;font-weight:800;letter-spacing:-0.02em;margin:0;}
+  .brand-mark p{font-size:13px;color:var(--ink-muted);margin:4px 0 0;}
+  .login-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:26px;box-shadow:0 1px 3px rgba(16,24,22,.04);}
+  .field-label{display:block;font-size:12px;font-weight:600;color:var(--ink-muted);margin-bottom:6px;}
+  .field-input{width:100%;padding:11px 13px;border-radius:12px;border:1px solid var(--border);font-size:14px;outline:none;margin-bottom:16px;transition:border-color .15s;}
+  .field-input:focus{border-color:var(--primary);}
+  .login-btn{width:100%;padding:12px;border-radius:12px;background:var(--primary);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s;}
+  .login-btn:hover{background:var(--primary-dark);}
+  .auth-error{display:flex;align-items:center;gap:6px;color:var(--danger);font-size:13px;margin:-8px 0 14px;}
+
+  /* ---------- Dashboard shell ---------- */
+  .app-header{background:var(--surface);border-bottom:1px solid var(--border);}
+  .header-inner{max-width:1080px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;}
+  .header-left{display:flex;align-items:center;gap:12px;}
+  .header-logo{width:40px;height:40px;border-radius:12px;background:#111111;display:flex;align-items:center;justify-content:center;}
+  .header-title{font-size:15px;font-weight:800;letter-spacing:-0.01em;margin:0;}
+  .header-sub{font-size:12px;color:var(--ink-muted);margin:1px 0 0;}
+  .signout-btn{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-muted);padding:8px 10px;border-radius:8px;transition:background .15s;}
+  .signout-btn:hover{background:var(--bg);}
+
+  /* dispatch route divider — signature animation: a rider delivering across the route */
+  .route-strip{height:34px;position:relative;overflow:hidden;}
+  .route-strip{max-width:1080px;margin:0 auto;padding:0 24px;}
+  .route-track{position:relative;height:2px;top:18px;background:repeating-linear-gradient(90deg,var(--border) 0 8px,transparent 8px 16px);}
+  .route-bike{position:absolute;top:-17px;left:0;color:#161616;animation:ride 16s linear infinite;}
+  .route-bike svg{display:block;animation:bob .6s ease-in-out infinite alternate;}
+  @keyframes ride{0%{left:0%;transform:scaleX(1);}48%{transform:scaleX(1);}50%{left:calc(100% - 38px);transform:scaleX(-1);}98%{transform:scaleX(-1);}100%{left:0%;transform:scaleX(1);}}
+  @keyframes bob{from{transform:translateY(0);}to{transform:translateY(-1.2px);}}
+
+  /* logo (actual brand image) */
+  .logo-img{display:block;object-fit:cover;border-radius:16px;}
+  .brand-mark .logo-img{width:78px;height:78px;border-radius:20px;box-shadow:0 8px 24px rgba(0,0,0,.22);}
+  .header-logo-img{width:38px;height:38px;border-radius:11px;}
+
+  /* wordmark (product name, sits under/next to the real logo) */
+  .zippee-mark{display:flex;align-items:center;gap:8px;}
+  .zippee-word{font-size:19px;font-weight:800;letter-spacing:-0.01em;color:var(--ink);}
+  .zippee-word sup{font-size:9px;font-weight:700;}
+  .zippee-word.on-dark{color:#fff;}
+
+  .main{max-width:1080px;margin:0 auto;padding:22px 24px 90px;}
+  .alert-bar{display:flex;align-items:center;gap:8px;font-size:13px;padding:11px 14px;border-radius:12px;margin-bottom:16px;background:var(--danger-soft);color:var(--danger);}
+
+  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;display:flex;align-items:center;gap:12px;transition:transform .2s, box-shadow .2s;}
+  .stat-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(16,24,22,.06);}
+  .stat-icon{width:38px;height:38px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .stat-value{font-size:19px;font-weight:800;line-height:1;}
+  .stat-label{font-size:12px;color:var(--ink-muted);margin-top:3px;}
+
+  .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px;}
+  .search-wrap{position:relative;flex:1;min-width:220px;}
+  .search-wrap .icon{position:absolute;left:12px;top:11px;color:var(--ink-muted);}
+  .search-input{width:100%;padding:11px 13px 11px 36px;border-radius:12px;border:1px solid var(--border);font-size:14px;outline:none;background:var(--surface);}
+  .search-input:focus{border-color:var(--primary);}
+  .select-wrap{position:relative;}
+  .select-wrap select{appearance:none;padding:11px 30px 11px 34px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:14px;cursor:pointer;color:var(--ink);}
+  .select-wrap .icon-left{position:absolute;left:11px;top:12px;color:var(--ink-muted);pointer-events:none;}
+  .select-wrap .icon-right{position:absolute;right:10px;top:13px;color:var(--ink-muted);pointer-events:none;}
+  .add-btn{display:flex;align-items:center;gap:7px;padding:11px 16px;border-radius:12px;background:var(--primary);color:#fff;font-size:14px;font-weight:700;transition:background .15s, transform .1s;}
+  .add-btn:hover{background:var(--primary-dark);}
+  .add-btn:active{transform:scale(.97);}
+  .util-btn{display:flex;align-items:center;gap:7px;padding:11px 15px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--ink);font-size:13.5px;font-weight:700;transition:background .15s, transform .1s;}
+  .util-btn:hover{background:var(--bg);}
+  .util-btn:active{transform:scale(.97);}
+
+  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;}
+  .row-grid{display:grid;grid-template-columns:36px 1.6fr .8fr 1fr 1.4fr 1fr 100px;align-items:center;padding:12px 16px;}
+  .table-head{font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--ink-muted);border-bottom:1px solid var(--border);}
+  .store-row{font-size:13.5px;border-bottom:1px solid var(--border);transition:background .15s;position:relative;}
+  .store-row:last-child{border-bottom:none;}
+  .store-row:hover{background:#FAFCFB;}
+  .store-row:hover .row-pin{transform:scale(1.15) translateY(-2px);color:var(--primary);}
+  .row-pin{transition:transform .2s, color .2s;color:var(--ink-muted);}
+  .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .check-btn{display:flex;align-items:center;justify-content:center;color:var(--ink-muted);}
+  .store-name{font-weight:700;padding-right:8px;}
+  .brand-tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;background:var(--amber-soft);color:var(--amber);display:inline-block;}
+  .poc-name{color:var(--ink);}
+  .poc-phone{font-size:11.5px;color:var(--ink-muted);}
+  .dash{opacity:.45;font-size:12px;}
+  .row-actions{display:flex;align-items:center;justify-content:flex-end;gap:2px;}
+  .icon-btn{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--ink-muted);transition:background .15s,color .15s, transform .1s;}
+  .icon-btn:hover{background:var(--primary-soft);color:var(--primary);}
+  .icon-btn:active{transform:scale(.9);}
+  .icon-btn.danger:hover{background:var(--danger-soft);color:var(--danger);}
+  .empty-state,.loading-state{padding:60px 20px;text-align:center;color:var(--ink-muted);font-size:14px;}
+  .empty-state .icon,.loading-state .icon{opacity:.4;margin-bottom:8px;}
+  .spin{animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* floating selection bar */
+  .float-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(0);display:flex;align-items:center;gap:14px;padding:12px 18px;border-radius:16px;background:var(--ink);color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.25);animation:riseUp .25s ease-out;z-index:40;}
+  @keyframes riseUp{from{opacity:0;transform:translateX(-50%) translateY(16px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+  .float-copy{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;padding:8px 13px;border-radius:10px;background:var(--primary);color:#fff;}
+  .float-clear{font-size:13px;font-weight:600;color:#cfd8d5;}
+
+  /* toast */
+  .toast{position:fixed;top:20px;right:20px;display:flex;align-items:center;gap:8px;padding:11px 16px;border-radius:12px;background:var(--ink);color:#fff;font-size:13px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.2);z-index:60;animation:slideIn .25s ease-out;}
+  @keyframes slideIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
+
+  /* modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50;animation:fadeIn .15s ease-out;}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .modal-card{width:100%;max-width:520px;background:var(--surface);border-radius:20px;padding:24px;max-height:88vh;overflow-y:auto;animation:popIn .2s ease-out;}
+  @keyframes popIn{from{opacity:0;transform:translateY(10px) scale(.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+  .modal-head{display:flex;align-items:center;justify-content:between;justify-content:space-between;margin-bottom:16px;}
+  .modal-title{font-size:15px;font-weight:800;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-field label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-muted);margin-bottom:5px;}
+  .form-field input,.form-field textarea{width:100%;padding:9px 11px;border-radius:10px;border:1px solid var(--border);font-size:13.5px;outline:none;margin-bottom:12px;}
+  .form-field input:focus,.form-field textarea:focus{border-color:var(--primary);}
+  .form-field textarea{resize:none;}
+  .modal-actions{display:flex;align-items:center;gap:10px;margin-top:6px;}
+  .btn-primary{flex:1;padding:11px;border-radius:12px;background:var(--primary);color:#fff;font-weight:700;font-size:13.5px;transition:background .15s;}
+  .btn-primary:hover{background:var(--primary-dark);}
+  .btn-secondary{padding:11px 16px;border-radius:12px;border:1px solid var(--border);color:var(--ink-muted);font-weight:700;font-size:13.5px;}
+  .btn-danger{flex:1;padding:11px;border-radius:12px;background:var(--danger);color:#fff;font-weight:700;font-size:13.5px;}
+  .form-error{display:flex;align-items:center;gap:6px;color:var(--danger);font-size:12.5px;margin:2px 0 8px;}
+
+  @media (max-width:720px){
+    .row-grid{grid-template-columns:24px 1.4fr 1fr 90px;}
+    .table-head > div:nth-child(4),.table-head > div:nth-child(5),
+    .store-row .col-city,.store-row .col-address{display:none;}
+    .stats-row{grid-template-columns:1fr 1fr 1fr;gap:8px;}
+    .grid2{grid-template-columns:1fr;}
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ---------------- Icon set (inline SVG, animatable) ---------------- */
+const ICONS = {
+  pin:(s=18)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  navigation:(s=26)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`,
+  search:(s=16)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  plus:(s=16)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  copy:(s=15)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+  edit:(s=15)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>`,
+  trash:(s=15)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
+  x:(s=18)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  check:(s=15)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="#8FE3C8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  logout:(s=15)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+  store:(s=17)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v3"/><path d="M2 9h20l-1.5 3a2 2 0 0 1-1.8 1H5.3a2 2 0 0 1-1.8-1Z"/><path d="M4 13v6a1 1 0 0 0 1 1h4v-5h6v5h4a1 1 0 0 0 1-1v-6"/></svg>`,
+  building:(s=17)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="9" y1="6" x2="9" y2="6.01"/><line x1="15" y1="6" x2="15" y2="6.01"/><line x1="9" y1="10" x2="9" y2="10.01"/><line x1="15" y1="10" x2="15" y2="10.01"/><line x1="9" y1="14" x2="9" y2="14.01"/><line x1="15" y1="14" x2="15" y2="14.01"/><line x1="9" y1="18" x2="15" y2="18"/></svg>`,
+  tag:(s=14)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83 3.83 11l9.58 9.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83Z"/><circle cx="7.5" cy="7.5" r="1"/></svg>`,
+  checksquare:(s=16)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><polyline points="8 12 11 15 16 9"/></svg>`,
+  square:(s=16)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>`,
+  lock:(s=15)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+  alert:(s=15)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  loader:(s=18)=>`<svg class="icon spin" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>`,
+  chevron:(s=14)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+  upload:(s=15)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+  download:(s=15)=>`<svg class="icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+  bike:(s=36)=>`<svg width="${s}" height="${s*0.62}" viewBox="0 0 48 32" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="23" cy="30.6" rx="19" ry="1.3" fill="currentColor" opacity=".13"/>
+    <circle cx="11" cy="24" r="5.8" fill="currentColor"/>
+    <circle cx="11" cy="24" r="2.1" fill="#fff"/>
+    <circle cx="35" cy="24" r="5.8" fill="currentColor"/>
+    <circle cx="35" cy="24" r="2.1" fill="#fff"/>
+    <path d="M11 24 h8.5 l3 -6.4 h6 l4.2 6.4 h3.3" stroke="currentColor" stroke-width="3.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="16" y="14" width="8" height="4" rx="1.8" fill="currentColor"/>
+    <rect x="24.5" y="8.2" width="10.5" height="9.4" rx="2" fill="currentColor"/>
+    <rect x="27" y="10.6" width="5.5" height="1.6" rx=".7" fill="#fff" opacity=".65"/>
+    <path d="M35 18 v-5" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+    <path d="M32 12.4 h5.6" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+    <circle cx="19.5" cy="5.6" r="3" fill="currentColor"/>
+    <path d="M19 8.5c-3 .6 -4.6 2.8 -4.9 6" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <path d="M17 12.8c1.3 1.8 3.6 2.3 6.3 1.8" stroke="currentColor" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+    <path d="M18.3 14.6 L22.5 18.6" stroke="currentColor" stroke-width="3.8" fill="none" stroke-linecap="round"/>
+  </svg>`,
+  logoMark:(s=24,color="currentColor")=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/><path d="M9.5 20v-6h5v6"/></svg>`,
+};
+
+/* ---------------- Data ---------------- */
+const LOGO_DATA_URI = "data:image/png;base64,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";
+/* =====================================================================
+   SUPABASE CONFIG — paste your project's URL and public "anon" key here.
+   Find both under Supabase dashboard → Project Settings → API.
+   Leave blank to keep running in local (offline) mode.
+   ===================================================================== */
+const SUPABASE_URL = "https://izjfropfipoxakbtmtdk.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6amZyb3BmaXBveGFrYnRtdGRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5MTEzMDAsImV4cCI6MjA5OTQ4NzMwMH0.IDD6-N51yXPB21b_PWMtgxTJV4VaaoDPd0C3PasjRSw";
+/* ===================================================================== */
+
+function sbConfigured(){ return !!(SUPABASE_URL && SUPABASE_ANON_KEY); }
+function sbHeaders(extra){
+  return Object.assign({
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+    "Content-Type": "application/json",
+  }, extra||{});
+}
+function toDbRecord(s){
+  return {
+    id: s.id, store_name: s.storeName, brand_code: s.brandCode,
+    location: s.location, city: s.city, address: s.address,
+    maps_link: s.mapsLink, poc_name: s.pocName, poc_phone: s.pocPhone,
+  };
+}
+function fromDbRecord(row){
+  return {
+    id: row.id, storeName: row.store_name, brandCode: row.brand_code,
+    location: row.location, city: row.city, address: row.address,
+    mapsLink: row.maps_link, pocName: row.poc_name, pocPhone: row.poc_phone,
+  };
+}
+async function sbFetchAll(){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/stores?select=*&order=created_at.desc`, { headers: sbHeaders() });
+  if(!res.ok) throw new Error("Supabase fetch failed: "+res.status);
+  const rows = await res.json();
+  return rows.map(fromDbRecord);
+}
+async function sbInsertMany(records){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/stores`, {
+    method:"POST", headers: sbHeaders({"Prefer":"return=representation"}),
+    body: JSON.stringify(records.map(toDbRecord)),
+  });
+  if(!res.ok) throw new Error("Supabase insert failed: "+res.status);
+  return (await res.json()).map(fromDbRecord);
+}
+async function sbUpdateOne(id, record){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/stores?id=eq.${encodeURIComponent(id)}`, {
+    method:"PATCH", headers: sbHeaders({"Prefer":"return=representation"}),
+    body: JSON.stringify(toDbRecord(record)),
+  });
+  if(!res.ok) throw new Error("Supabase update failed: "+res.status);
+  return (await res.json()).map(fromDbRecord)[0];
+}
+async function sbDeleteOne(id){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/stores?id=eq.${encodeURIComponent(id)}`, {
+    method:"DELETE", headers: sbHeaders(),
+  });
+  if(!res.ok) throw new Error("Supabase delete failed: "+res.status);
+}
+
+const STORAGE_KEY = "store-master:stores";
+
+const seedStores = [
+  { id:"s1", brandCode:"MT", location:"Kalyan Nagar", city:"Bengaluru", storeName:"ZD MT Kalyan Nagar", address:"Warehouse, Survey no. 3, SAHASRA GRAND, Ground Floor, near Pragathi Kissan Mart, Chelikere, Kalyan Nagar, Bengaluru, Karnataka 560043", mapsLink:"", pocName:"Manohar", pocPhone:"+91 81972 38398" },
+  { id:"s2", brandCode:"MT", location:"Basaweshwara Nagar", city:"Bengaluru", storeName:"ZD MT Basaweshwara Nagar", address:"1, 14th Main Rd, Vrushabhavathi Nagar, Nanjappa Layout, Basaweshwara Nagar, Bengaluru, Karnataka 560079", mapsLink:"", pocName:"Ashok", pocPhone:"+91 90663 75917" },
+  { id:"s3", brandCode:"MT", location:"Jakkur", city:"Bengaluru", storeName:"ZD MT Jakkur", address:"Ground Floor, Site # 1 & 9, Sy No. 96/1, Opp. Govt. P U College, Jakkur Main Road, Jakkur, Bangalore 560064", mapsLink:"", pocName:"Rajesh", pocPhone:"+91 99724 12241" },
+  { id:"s4", brandCode:"MT", location:"Brookfield", city:"Bengaluru", storeName:"ZD MT Brookfield", address:"3/1 Varthur Main Road, Thubarahalli, Kundalahalli, Bangalore 560066", mapsLink:"", pocName:"Viraj", pocPhone:"+91 96661 99839" },
+  { id:"s5", brandCode:"MT", location:"Thyagraj Nagar", city:"Bengaluru", storeName:"ZD MT Thyagraj Nagar", address:"101, DV Gundappa Rd, Basavanagudi, Bengaluru, Karnataka 560004", mapsLink:"", pocName:"Manjunath", pocPhone:"+91 94916 90021" },
+  { id:"s6", brandCode:"MT", location:"Begur", city:"Bengaluru", storeName:"ZD MT Begur", address:"Building No. 3 and 4, 168/13, 1st Floor, Hosur Rd, behind Dakshin Honda Showroom, Hal Layout, Singasandra, Bengaluru, Karnataka 560066", mapsLink:"https://maps.app.goo.gl/PnidrbfjrDzBuSgv5?g_st=ac", pocName:"Munsif", pocPhone:"9538958005" },
+  { id:"s7", brandCode:"FKM", location:"Gachibowli", city:"Hyderabad", storeName:"ZD FKM Gachibowli", address:"First Floor, No.66, Madhav Hills, Rajewara Colony, Raja Rajeshwara Nagar, Kondapur, Serilingampally, Hyderabad, Telangana 500084", mapsLink:"https://maps.app.goo.gl/pbSAwWmbGA2gGJh39", pocName:"", pocPhone:"" },
+  { id:"s8", brandCode:"OZI", location:"Dwarka", city:"Delhi", storeName:"ZD OZI Dwarka", address:"CN-134, Subhash Park, Matiala, New Delhi, Delhi 110059", mapsLink:"https://maps.app.goo.gl/jxVBTqTBwf1ARYQ88", pocName:"Gautam", pocPhone:"98100 74081" },
+  { id:"s9", brandCode:"QKY", location:"Lower Parel", city:"Mumbai", storeName:"ZD QKY Lower Parel", address:"Basement 21, Floor – B, Plot – 118, Bharat Industrial Estate, Tokersey Jivraj Road, Ram Tekadi, Sewree, Mumbai 400015", mapsLink:"https://maps.app.goo.gl/snXTpmqJdge28ep76", pocName:"", pocPhone:"" },
+  { id:"s10", brandCode:"VA", location:"Gurugram", city:"Gurugram", storeName:"ZD VA GGN", address:"First floor, Plot no. 27, Phase 1, Udyog Vihar, Gurugram, Haryana 122008", mapsLink:"https://maps.app.goo.gl/hd9JAZ7uVnK6QVjw7?g_st=ac", pocName:"Rahul", pocPhone:"9354601741" },
+  { id:"s11", brandCode:"HY", location:"Chakala", city:"Mumbai", storeName:"ZD HY Chakala", address:"Median Brands Pvt. Ltd, Shreepal Complex, Unit no. 8 Ground Floor, Suren Road, Near WEH Metro Station, Mumbai, Maharashtra 400093", mapsLink:"https://maps.app.goo.gl/VjQdz8su6hm8WgXV8", pocName:"Azmat", pocPhone:"99200 51077" },
+];
+
+/* ---------------- State ---------------- */
+let state = {
+  authed:false, authError:"",
+  stores:[], loading:true, loadError:"",
+  search:"", brandFilter:"All", cityFilter:"All",
+  selected:new Set(),
+  modal:null,      // { mode:'add'|'edit', id }
+  deleteId:null,
+  toast:"",
+};
+let toastTimer=null;
+
+function esc(str){
+  return String(str||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function genId(){return "store_"+Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+function formatStore(s){
+  const lines=[s.storeName || `ZD ${s.brandCode} ${s.location}`.trim()];
+  if(s.address) lines.push(`Address: ${s.address}`);
+  if(s.mapsLink) lines.push(`Location: ${s.mapsLink}`);
+  lines.push("POC:");
+  if(s.pocName) lines.push(s.pocName);
+  if(s.pocPhone) lines.push(s.pocPhone);
+  return lines.join("\n");
+}
+
+/* ---------------- Storage ---------------- */
+async function loadStores(){
+  state.loading=true; state.loadError=""; renderApp();
+
+  if(sbConfigured()){
+    try{
+      state.stores = await sbFetchAll();
+      state.loading=false; renderApp(); animateCounts();
+      return;
+    }catch(e){
+      state.loadError = "Couldn't reach Supabase — check the URL/key in the script. Showing local data instead.";
+    }
+  }
+
+  try{
+    const res = await window.storage.get(STORAGE_KEY, true);
+    if(res && res.value){ state.stores = JSON.parse(res.value); }
+    else{
+      state.stores = seedStores;
+      await window.storage.set(STORAGE_KEY, JSON.stringify(seedStores), true);
+    }
+  }catch(e){
+    state.stores = seedStores;
+    try{ await window.storage.set(STORAGE_KEY, JSON.stringify(seedStores), true); }
+    catch(e2){ state.loadError = "Could not connect to shared storage. Showing local sample data only."; }
+  }
+  state.loading=false;
+  renderApp();
+  animateCounts();
+}
+
+// Persists the full local array — used only in local (non-Supabase) mode.
+async function persistLocal(next){
+  state.stores = next;
+  renderApp();
+  try{
+    const res = await window.storage.set(STORAGE_KEY, JSON.stringify(next), true);
+    if(!res) throw new Error("no result");
+  }catch(e){
+    flashToast("Could not save — check your connection and try again");
+  }
+}
+
+async function addStores(records){
+  state.stores = [...records, ...state.stores];
+  renderApp();
+  if(sbConfigured()){
+    try{ await sbInsertMany(records); }
+    catch(e){ flashToast("Saved locally, but Supabase insert failed — check your connection"); }
+  } else {
+    try{
+      const res = await window.storage.set(STORAGE_KEY, JSON.stringify(state.stores), true);
+      if(!res) throw new Error("no result");
+    }catch(e){ flashToast("Could not save — check your connection and try again"); }
+  }
+}
+
+async function updateStoreById(id, record){
+  state.stores = state.stores.map(s=> s.id===id ? record : s);
+  renderApp();
+  if(sbConfigured()){
+    try{ await sbUpdateOne(id, record); }
+    catch(e){ flashToast("Saved locally, but Supabase update failed — check your connection"); }
+  } else {
+    try{
+      const res = await window.storage.set(STORAGE_KEY, JSON.stringify(state.stores), true);
+      if(!res) throw new Error("no result");
+    }catch(e){ flashToast("Could not save — check your connection and try again"); }
+  }
+}
+
+async function deleteStoreById(id){
+  state.stores = state.stores.filter(s=>s.id!==id);
+  state.selected.delete(id);
+  renderApp();
+  if(sbConfigured()){
+    try{ await sbDeleteOne(id); }
+    catch(e){ flashToast("Removed locally, but Supabase delete failed — check your connection"); }
+  } else {
+    try{
+      const res = await window.storage.set(STORAGE_KEY, JSON.stringify(state.stores), true);
+      if(!res) throw new Error("no result");
+    }catch(e){ flashToast("Could not save — check your connection and try again"); }
+  }
+}
+
+function flashToast(msg){
+  state.toast = msg;
+  renderToast();
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ state.toast=""; renderToast(); }, 2200);
+}
+
+/* ---------------- Derived data ---------------- */
+function getBrands(){
+  return ["All", ...Array.from(new Set(state.stores.map(s=>s.brandCode).filter(Boolean))).sort()];
+}
+function getCities(){
+  return ["All", ...Array.from(new Set(state.stores.map(s=>s.city||s.location).filter(Boolean))).sort()];
+}
+function getFiltered(){
+  const q = state.search.trim().toLowerCase();
+  return state.stores.filter(s=>{
+    const matchesSearch = !q || [s.storeName,s.location,s.city,s.address,s.pocName,s.pocPhone,s.brandCode].join(" ").toLowerCase().includes(q);
+    const matchesBrand = state.brandFilter==="All" || s.brandCode===state.brandFilter;
+    const matchesCity = state.cityFilter==="All" || (s.city||s.location)===state.cityFilter;
+    return matchesSearch && matchesBrand && matchesCity;
+  });
+}
+
+/* ---------------- Render: Login ---------------- */
+function renderLogin(){
+  return `
+  <div class="login-wrap">
+    <div class="float-pin" style="top:12%;left:10%;">${ICONS.pin(46)}</div>
+    <div class="float-pin" style="top:70%;left:82%;animation-delay:1.4s;">${ICONS.pin(38)}</div>
+    <div class="float-pin" style="top:20%;left:78%;animation-delay:2.8s;">${ICONS.pin(30)}</div>
+    <div class="login-card-wrap">
+      <div class="brand-mark">
+        <div class="pin-badge" style="background:transparent;box-shadow:none;width:auto;height:auto;">
+          <div class="pin-ring" style="inset:-6px;"></div><div class="pin-ring d2" style="inset:-6px;"></div>
+          <img class="logo-img" src="${LOGO_DATA_URI}" alt="Zippee" />
+        </div>
+        <h1 style="margin-top:14px;">Location Master</h1>
+        <p>Store &amp; rider dispatch directory</p>
+      </div>
+      <form class="login-card" id="loginForm">
+        <label class="field-label">ID</label>
+        <input class="field-input" id="loginUser" placeholder="Enter ID" autocomplete="off" />
+        <label class="field-label">Password</label>
+        <input class="field-input" id="loginPass" type="password" placeholder="Enter password" style="margin-bottom:${state.authError?'6px':'20px'}" />
+        ${state.authError ? `<div class="auth-error">${ICONS.alert(14)} ${esc(state.authError)}</div>` : ""}
+        <button type="submit" class="login-btn">${ICONS.lock(15)} Sign in</button>
+      </form>
+    </div>
+  </div>`;
+}
+
+/* ---------------- Render: Dashboard ---------------- */
+function renderStatCard(icon,label,value){
+  return `<div class="stat-card">
+    <div class="stat-icon">${icon}</div>
+    <div><div class="stat-value" data-count="${value}">0</div><div class="stat-label">${label}</div></div>
+  </div>`;
+}
+
+function renderSelect(id,value,options){
+  return `<div class="select-wrap">
+    <div class="icon-left">${id==='brandFilterSel'?ICONS.tag(14):ICONS.pin(14)}</div>
+    <select id="${id}">
+      ${options.map(o=>`<option value="${esc(o)}" ${o===value?"selected":""}>${esc(o)}</option>`).join("")}
+    </select>
+    <div class="icon-right">${ICONS.chevron(14)}</div>
+  </div>`;
+}
+
+function renderRow(s){
+  const checked = state.selected.has(s.id);
+  return `
+  <div class="store-row row-grid" data-row="${s.id}">
+    <button class="check-btn" data-action="toggle-row" data-id="${s.id}">${checked?ICONS.checksquare(16):ICONS.square(16)}</button>
+    <div class="store-name truncate">${esc(s.storeName)}</div>
+    <div>${s.brandCode?`<span class="brand-tag">${esc(s.brandCode)}</span>`:""}</div>
+    <div class="col-city truncate">${esc(s.city||s.location)}</div>
+    <div class="col-address truncate" title="${esc(s.address)}">${esc(s.address)}</div>
+    <div>
+      ${ (s.pocName||s.pocPhone) ?
+        `<div class="poc-name truncate">${esc(s.pocName)}</div><div class="poc-phone truncate">${esc(s.pocPhone)}</div>`
+        : `<span class="dash">—</span>` }
+    </div>
+    <div class="row-actions">
+      <button class="icon-btn" data-action="copy-one" data-id="${s.id}" title="Copy"><span class="row-pin">${ICONS.copy(15)}</span></button>
+      <button class="icon-btn" data-action="edit" data-id="${s.id}" title="Edit">${ICONS.edit(15)}</button>
+      <button class="icon-btn danger" data-action="ask-delete" data-id="${s.id}" title="Delete">${ICONS.trash(15)}</button>
+    </div>
+  </div>`;
+}
+
+function renderTableSection(){
+  const filtered = getFiltered();
+  const allVisibleSelected = filtered.length>0 && filtered.every(s=>state.selected.has(s.id));
+  let body;
+  if(state.loading){
+    body = `<div class="loading-state">${ICONS.loader(20)} &nbsp;Loading stores…</div>`;
+  } else if(filtered.length===0){
+    body = `<div class="empty-state">${ICONS.store(28)}<div>No stores match your filters yet.</div></div>`;
+  } else {
+    body = filtered.map(renderRow).join("");
+  }
+  return `
+  <div class="table-wrap" id="tableWrap">
+    <div class="row-grid table-head">
+      <button class="check-btn" data-action="toggle-all">${allVisibleSelected?ICONS.checksquare(16):ICONS.square(16)}</button>
+      <div>STORE NAME</div><div>BRAND</div><div class="col-city">CITY</div><div class="col-address">ADDRESS</div><div>POC</div>
+      <div style="text-align:right">ACTIONS</div>
+    </div>
+    <div id="tableBody">${body}</div>
+  </div>`;
+}
+
+function renderFloatBar(){
+  if(state.selected.size===0) return "";
+  return `<div class="float-bar" id="floatBar">
+    <span style="font-size:13px;font-weight:600;">${state.selected.size} selected</span>
+    <button class="float-copy" data-action="copy-selected">${ICONS.copy(14)} Copy all</button>
+    <button class="float-clear" data-action="clear-selected">Clear</button>
+  </div>`;
+}
+
+function renderToast(){
+  const el = document.getElementById("toastRoot");
+  if(!el) return;
+  el.innerHTML = state.toast ? `<div class="toast">${ICONS.check(15)} ${esc(state.toast)}</div>` : "";
+}
+
+function renderModal(){
+  if(!state.modal) return "";
+  const editing = state.modal.mode==='edit';
+  const s = editing ? state.stores.find(x=>x.id===state.modal.id) : null;
+  const f = editing ? s : {brandCode:"",location:"",city:"",storeName:"",address:"",mapsLink:"",pocName:"",pocPhone:""};
+  return `
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div class="modal-title">${editing?"Edit store":"Add store"}</div>
+        <button data-action="close-modal">${ICONS.x(18)}</button>
+      </div>
+      <div class="grid2">
+        <div class="form-field"><label>Brand code</label><input id="fBrand" value="${esc(f.brandCode)}" placeholder="OZI, QKY, MT…"/></div>
+        <div class="form-field"><label>Location</label><input id="fLocation" value="${esc(f.location)}" placeholder="Dwarka, Jakkur…"/></div>
+      </div>
+      <div class="grid2">
+        <div class="form-field"><label>City</label><input id="fCity" value="${esc(f.city)}" placeholder="Delhi, Bengaluru…"/></div>
+        <div class="form-field"><label>Store name (optional)</label><input id="fStoreName" value="${esc(f.storeName)}" placeholder="ZD BRAND Location"/></div>
+      </div>
+      <div class="form-field"><label>Full address</label><textarea id="fAddress" rows="2">${esc(f.address)}</textarea></div>
+      <div class="form-field"><label>Google Maps link</label><input id="fMaps" value="${esc(f.mapsLink)}" placeholder="https://maps.app.goo.gl/…"/></div>
+      <div class="grid2">
+        <div class="form-field"><label>POC name</label><input id="fPocName" value="${esc(f.pocName)}" placeholder="Contact person"/></div>
+        <div class="form-field"><label>POC phone</label><input id="fPocPhone" value="${esc(f.pocPhone)}" placeholder="+91 …"/></div>
+      </div>
+      <div id="formErrorWrap"></div>
+      <div class="modal-actions">
+        <button class="btn-primary" data-action="save-form">${editing?"Save changes":"Add store"}</button>
+        <button class="btn-secondary" data-action="close-modal">Cancel</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderDeleteConfirm(){
+  if(!state.deleteId) return "";
+  return `
+  <div class="modal-overlay" id="deleteOverlay">
+    <div class="modal-card" style="max-width:380px;">
+      <div class="modal-title" style="margin-bottom:8px;">Delete this store?</div>
+      <p style="font-size:13.5px;color:var(--ink-muted);margin:0 0 18px;">This can't be undone. The store will be removed for everyone using this dashboard.</p>
+      <div class="modal-actions">
+        <button class="btn-danger" data-action="confirm-delete">Delete</button>
+        <button class="btn-secondary" data-action="cancel-delete">Cancel</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderDashboard(){
+  const cities = getCities(); const brands = getBrands();
+  return `
+  <div class="app-header">
+    <div class="header-inner">
+      <div class="header-left">
+        <img class="header-logo-img" src="${LOGO_DATA_URI}" alt="Zippee" />
+        <div>
+          <h1 class="header-title" style="font-size:15px;font-weight:800;margin:0;letter-spacing:-0.01em;">Location Master</h1>
+          <p class="header-sub">${state.stores.length} stores across ${cities.length-1} cities</p>
+        </div>
+      </div>
+      <button class="signout-btn" data-action="signout">${ICONS.logout(15)} Sign out</button>
+    </div>
+    <div class="route-strip"><div class="route-track"><div class="route-bike">${ICONS.bike(38)}</div></div></div>
+  </div>
+
+  <div class="main">
+    ${state.loadError ? `<div class="alert-bar">${ICONS.alert(16)} ${esc(state.loadError)}</div>` : ""}
+    ${(!sbConfigured() && !state.loadError) ? `<div class="alert-bar" style="background:var(--amber-soft);color:var(--amber);">${ICONS.alert(16)} Running in local mode — add your Supabase project URL and anon key near the top of the script to connect the real database.</div>` : ""}
+
+    <div class="stats-row">
+      ${renderStatCard(ICONS.store(17),"Total stores",state.stores.length)}
+      ${renderStatCard(ICONS.building(17),"Brand codes",brands.length-1)}
+      ${renderStatCard(ICONS.pin(17),"Cities",cities.length-1)}
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <div class="icon">${ICONS.search(16)}</div>
+        <input class="search-input" id="searchInput" placeholder="Search by name, city, POC, phone…" value="${esc(state.search)}" />
+      </div>
+      ${renderSelect("brandFilterSel", state.brandFilter, brands)}
+      ${renderSelect("cityFilterSel", state.cityFilter, cities)}
+      <button class="util-btn" data-action="import-excel">${ICONS.upload(15)} Import Excel</button>
+      <button class="util-btn" data-action="export-excel">${ICONS.download(15)} Export Excel</button>
+      <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none" />
+      <button class="add-btn" data-action="open-add">${ICONS.plus(16)} Add store</button>
+    </div>
+
+    ${renderTableSection()}
+  </div>
+
+  <div id="floatBarRoot">${renderFloatBar()}</div>
+  <div id="modalRoot">${renderModal()}${renderDeleteConfirm()}</div>
+  `;
+}
+
+/* ---------------- Master render ---------------- */
+function renderApp(){
+  const app = document.getElementById("app");
+  app.innerHTML = state.authed ? renderDashboard() : renderLogin();
+  if(!document.getElementById("toastRoot")){
+    const t = document.createElement("div"); t.id="toastRoot"; document.body.appendChild(t);
+  }
+  renderToast();
+}
+
+function animateCounts(){
+  document.querySelectorAll("[data-count]").forEach(el=>{
+    const target = parseInt(el.getAttribute("data-count"),10)||0;
+    let cur=0; const step = Math.max(1, Math.ceil(target/20));
+    const timer = setInterval(()=>{
+      cur += step;
+      if(cur>=target){ cur=target; clearInterval(timer); }
+      el.textContent = cur;
+    }, 25);
+  });
+}
+
+/* ---------------- Partial re-renders (preserve input focus) ---------------- */
+function rerenderTableOnly(){
+  const wrap = document.getElementById("tableWrap");
+  if(wrap) wrap.outerHTML = renderTableSection();
+  const fb = document.getElementById("floatBarRoot");
+  if(fb) fb.innerHTML = renderFloatBar();
+  const header = document.querySelector(".header-sub");
+  if(header) header.textContent = `${state.stores.length} stores across ${getCities().length-1} cities`;
+}
+
+/* ---------------- Excel import / export ---------------- */
+function normKey(k){ return String(k||"").toLowerCase().replace(/[^a-z0-9]/g,""); }
+
+function findVal(row, candidates){
+  const keys = Object.keys(row);
+  for(const cand of candidates){
+    const nc = normKey(cand);
+    const match = keys.find(k=>normKey(k)===nc);
+    if(match!==undefined && row[match]!==undefined && row[match]!==null) return String(row[match]).trim();
+  }
+  return "";
+}
+
+function handleImportFile(file){
+  if(!file) return;
+  if(typeof XLSX==="undefined"){ flashToast("Excel library failed to load — check your connection"); return; }
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:"array"});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {defval:""});
+      if(rows.length===0){ flashToast("That file doesn't have any rows to import"); return; }
+
+      const imported = rows.map(row=>{
+        const storeNameRaw = findVal(row, ["Store name","Store Name","StoreName","Name"]);
+        const brandCode = findVal(row, ["Brand","Brand code","BrandCode"]);
+        const address = findVal(row, ["Address","Full address"]);
+        const location = findVal(row, ["Location","Area","Locality"]);
+        const pocName = findVal(row, ["POC name","POC Name","POCName","Contact name"]);
+        const pocPhone = findVal(row, ["POC number","POC Number","POCNumber","Phone","POC phone","Contact number"]);
+        const storeName = storeNameRaw || `ZD ${brandCode} ${location}`.replace(/\s+/g," ").trim();
+        return {
+          id: genId(),
+          brandCode, location, city: location, storeName,
+          address, mapsLink: "", pocName, pocPhone,
+        };
+      }).filter(r=> r.location || r.address || r.storeName);
+
+      if(imported.length===0){ flashToast("Couldn't find any valid rows — check the column headers"); return; }
+
+      await addStores(imported);
+      flashToast(`Imported ${imported.length} store${imported.length>1?"s":""}`);
+    }catch(err){
+      flashToast("Couldn't read that file — please check the format");
+    }
+  };
+  reader.onerror = function(){ flashToast("Couldn't read that file"); };
+  reader.readAsArrayBuffer(file);
+}
+
+function exportToExcel(){
+  if(typeof XLSX==="undefined"){ flashToast("Excel library failed to load — check your connection"); return; }
+  const rows = state.stores.map(s=>({
+    "Store name": s.storeName || "",
+    "Brand": s.brandCode || "",
+    "Address": s.address || "",
+    "Location": s.city || s.location || "",
+    "POC name": s.pocName || "",
+    "POC number": s.pocPhone || "",
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = [{wch:26},{wch:10},{wch:46},{wch:18},{wch:18},{wch:16}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Store Master");
+  XLSX.writeFile(wb, "zippee-location-master.xlsx");
+  flashToast(`Exported ${state.stores.length} stores`);
+}
+
+/* ---------------- Event delegation ---------------- */
+document.addEventListener("submit", function(e){
+  if(e.target.id==="loginForm"){
+    e.preventDefault();
+    const u = document.getElementById("loginUser").value;
+    const p = document.getElementById("loginPass").value;
+    if(u==="Bizops2026" && p==="Zippee@123"){
+      state.authed=true; state.authError="";
+      renderApp();
+      loadStores();
+    } else {
+      state.authError = "That ID or password isn't right. Try again.";
+      renderApp();
+    }
+  }
+});
+
+document.addEventListener("input", function(e){
+  if(e.target.id==="searchInput"){
+    state.search = e.target.value;
+    rerenderTableOnly();
+  }
+});
+
+document.addEventListener("change", function(e){
+  if(e.target.id==="brandFilterSel"){ state.brandFilter = e.target.value; rerenderTableOnly(); }
+  if(e.target.id==="cityFilterSel"){ state.cityFilter = e.target.value; rerenderTableOnly(); }
+  if(e.target.id==="importFileInput"){ handleImportFile(e.target.files[0]); e.target.value=""; }
+});
+
+document.addEventListener("click", async function(e){
+  const btn = e.target.closest("[data-action]");
+  if(!btn) return;
+  const action = btn.getAttribute("data-action");
+  const id = btn.getAttribute("data-id");
+
+  if(action==="signout"){ state.authed=false; state.selected=new Set(); renderApp(); return; }
+
+  if(action==="toggle-row"){
+    state.selected.has(id) ? state.selected.delete(id) : state.selected.add(id);
+    rerenderTableOnly(); return;
+  }
+  if(action==="toggle-all"){
+    const filtered = getFiltered();
+    const allSelected = filtered.length>0 && filtered.every(s=>state.selected.has(s.id));
+    filtered.forEach(s=> allSelected ? state.selected.delete(s.id) : state.selected.add(s.id));
+    rerenderTableOnly(); return;
+  }
+  if(action==="clear-selected"){ state.selected=new Set(); rerenderTableOnly(); return; }
+
+  if(action==="copy-one" || action==="copy-selected"){
+    const ids = action==="copy-one" ? [id] : Array.from(state.selected);
+    const chosen = state.stores.filter(s=>ids.includes(s.id));
+    if(chosen.length===0) return;
+    const text = chosen.map(formatStore).join("\n\n");
+    try{
+      await navigator.clipboard.writeText(text);
+      flashToast(`Copied ${chosen.length} store${chosen.length>1?"s":""} to clipboard`);
+    }catch(err){ flashToast("Couldn't access clipboard — please copy manually"); }
+    return;
+  }
+
+  if(action==="open-add"){ state.modal={mode:"add"}; document.getElementById("modalRoot").innerHTML = renderModal()+renderDeleteConfirm(); return; }
+  if(action==="import-excel"){ document.getElementById("importFileInput").click(); return; }
+  if(action==="export-excel"){ exportToExcel(); return; }
+  if(action==="edit"){ state.modal={mode:"edit", id}; document.getElementById("modalRoot").innerHTML = renderModal()+renderDeleteConfirm(); return; }
+  if(action==="close-modal"){ state.modal=null; document.getElementById("modalRoot").innerHTML = renderModal()+renderDeleteConfirm(); return; }
+
+  if(action==="save-form"){
+    const brandCode = document.getElementById("fBrand").value.trim();
+    const location = document.getElementById("fLocation").value.trim();
+    const city = document.getElementById("fCity").value.trim();
+    const storeNameRaw = document.getElementById("fStoreName").value.trim();
+    const address = document.getElementById("fAddress").value.trim();
+    const mapsLink = document.getElementById("fMaps").value.trim();
+    const pocName = document.getElementById("fPocName").value.trim();
+    const pocPhone = document.getElementById("fPocPhone").value.trim();
+
+    if(!location || !address){
+      document.getElementById("formErrorWrap").innerHTML = `<div class="form-error">${ICONS.alert(14)} Location and address are required.</div>`;
+      return;
+    }
+    const storeName = storeNameRaw || `ZD ${brandCode} ${location}`.replace(/\s+/g," ").trim();
+    const record = { id: state.modal.mode==='edit'?state.modal.id:genId(), brandCode, location, city: city||location, storeName, address, mapsLink, pocName, pocPhone };
+    const isEdit = state.modal.mode==='edit';
+    state.modal=null;
+    if(isEdit){ await updateStoreById(record.id, record); }
+    else { await addStores([record]); }
+    document.getElementById("modalRoot").innerHTML = renderModal()+renderDeleteConfirm();
+    flashToast("Saved");
+    return;
+  }
+
+  if(action==="ask-delete"){ state.deleteId=id; document.getElementById("modalRoot").innerHTML = renderModal()+renderDeleteConfirm(); return; }
+  if(action==="cancel-delete"){ state.deleteId=null; document.getElementById("modalRoot").innerHTML = renderModal()+renderDeleteConfirm(); return; }
+  if(action==="confirm-delete"){
+    const id = state.deleteId;
+    state.deleteId=null;
+    await deleteStoreById(id);
+    document.getElementById("modalRoot").innerHTML = renderModal()+renderDeleteConfirm();
+    flashToast("Store deleted");
+    return;
+  }
+});
+
+/* ---------------- Init ---------------- */
+renderApp();
+</script>
+</body>
+</html>

@@ -317,6 +317,18 @@ function esc(str){
   return String(str||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 function genId(){return "store_"+Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+function dupKey(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
+function findDuplicateStore(storeName, address, excludeId){
+  const nName = dupKey(storeName);
+  const nAddr = dupKey(address);
+  return state.stores.find(s=>{
+    if(excludeId && s.id===excludeId) return false;
+    const sName = dupKey(s.storeName);
+    const sAddr = dupKey(s.address);
+    return (nName && sName===nName) || (nAddr && sAddr===nAddr);
+  });
+}
+
 function formatStore(s){
   const lines=[s.storeName || `ZD ${s.brandCode} ${s.location}`.trim()];
   if(s.address) lines.push(`Address: ${s.address}`);
@@ -720,8 +732,29 @@ function handleImportFile(file){
 
       if(imported.length===0){ flashToast("Couldn't find any valid rows — check the column headers"); return; }
 
-      await addStores(imported);
-      flashToast(`Imported ${imported.length} store${imported.length>1?"s":""}`);
+      const seen = new Set();
+      const toInsert = [];
+      let skipped = 0;
+      for(const rec of imported){
+        const nName = dupKey(rec.storeName);
+        const nAddr = dupKey(rec.address);
+        const batchKey = nName || nAddr;
+        const dupInBatch = batchKey && seen.has(batchKey);
+        const dupInExisting = findDuplicateStore(rec.storeName, rec.address, null);
+        if(dupInBatch || dupInExisting){ skipped++; continue; }
+        if(batchKey) seen.add(batchKey);
+        toInsert.push(rec);
+      }
+
+      if(toInsert.length===0){
+        flashToast(`All ${imported.length} rows already exist — nothing new imported`);
+        return;
+      }
+
+      await addStores(toInsert);
+      flashToast(skipped>0
+        ? `Imported ${toInsert.length} store${toInsert.length>1?"s":""}, skipped ${skipped} duplicate${skipped>1?"s":""}`
+        : `Imported ${toInsert.length} store${toInsert.length>1?"s":""}`);
     }catch(err){
       flashToast("Couldn't read that file — please check the format");
     }
@@ -832,8 +865,13 @@ document.addEventListener("click", async function(e){
       return;
     }
     const storeName = storeNameRaw || `ZD ${brandCode} ${location}`.replace(/\s+/g," ").trim();
-    const record = { id: state.modal.mode==='edit'?state.modal.id:genId(), brandCode, location, city: city||location, storeName, address, mapsLink, pocName, pocPhone };
     const isEdit = state.modal.mode==='edit';
+    const dup = findDuplicateStore(storeName, address, isEdit ? state.modal.id : null);
+    if(dup){
+      document.getElementById("formErrorWrap").innerHTML = `<div class="form-error">${ICONS.alert(14)} This matches an existing store: "${esc(dup.storeName)}". Please check the list before adding it again.</div>`;
+      return;
+    }
+    const record = { id: isEdit?state.modal.id:genId(), brandCode, location, city: city||location, storeName, address, mapsLink, pocName, pocPhone };
     state.modal=null;
     if(isEdit){ await updateStoreById(record.id, record); }
     else { await addStores([record]); }

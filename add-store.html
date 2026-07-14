@@ -141,6 +141,25 @@ function handleGate(){
   render();
 }
 
+function normKey(s){
+  return String(s||"").trim().toLowerCase().replace(/\s+/g," ");
+}
+
+async function checkDuplicate(storeName, address){
+  const nName = normKey(storeName);
+  const nAddr = normKey(address);
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/stores?select=store_name,address`, {
+    headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer "+SUPABASE_ANON_KEY },
+  });
+  if(!res.ok) throw new Error("Lookup failed: "+res.status);
+  const rows = await res.json();
+  return rows.some(r=>{
+    const rName = normKey(r.store_name);
+    const rAddr = normKey(r.address);
+    return (nName && rName===nName) || (nAddr && rAddr===nAddr);
+  });
+}
+
 async function handleSubmit(){
   const brandCode = document.getElementById("fBrand").value.trim();
   const location = document.getElementById("fLocation").value.trim();
@@ -157,13 +176,29 @@ async function handleSubmit(){
   }
 
   const storeName = `ZD ${brandCode} ${location}`.replace(/\s+/g," ").trim();
+
+  submitting = true; banner = null; render();
+  try{
+    const isDup = await checkDuplicate(storeName, address);
+    if(isDup){
+      submitting = false;
+      banner = {type:"error", text:"A store with this name or address already exists. Please check the list with your team lead before adding it again."};
+      render();
+      return;
+    }
+  }catch(e){
+    submitting = false;
+    banner = {type:"error", text:"Couldn't check for duplicates — check your connection and try again."};
+    render();
+    return;
+  }
+
   const record = {
     id: genId(), store_name: storeName, brand_code: brandCode,
     location, city: city || location, address, maps_link: mapsLink,
     poc_name: pocName, poc_phone: pocPhone,
   };
 
-  submitting = true; banner = null; render();
   try{
     const res = await fetch(`${SUPABASE_URL}/rest/v1/stores`, {
       method: "POST",
